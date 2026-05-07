@@ -7,6 +7,13 @@ FastAPI server providing CTranslate2 inference with an OpenAI-compatible API. Su
 - Docker
 - NVIDIA Container Toolkit (GPU only)
 
+## Dockerfiles
+
+| File | Base | Use case |
+|---|---|---|
+| `Dockerfile.cpu` | `python:3.14-slim` | Standard CPU image |
+| `Dockerfile.gpu` | `nvidia/cuda:12.8.1-cudnn-devel-ubuntu22.04` | NVIDIA GPU image |
+
 ## Build
 
 ```bash
@@ -42,6 +49,29 @@ make run-gpu     # GPU (requires NVIDIA runtime)
 ```
 
 Models are stored inside the image under `/models`.
+
+## Pre-built images
+
+Images are published to the GitHub Container Registry on every push:
+
+```
+ghcr.io/jordimas/ctranslate2-web-server-cpu:latest
+ghcr.io/jordimas/ctranslate2-web-server-gpu:latest
+```
+
+Pull and run the CPU image:
+
+```bash
+docker pull ghcr.io/jordimas/ctranslate2-web-server-cpu:latest
+docker run --rm -p 8015:8015 -e HF_TOKEN=$HF_TOKEN ghcr.io/jordimas/ctranslate2-web-server-cpu:latest
+```
+
+For GPU:
+
+```bash
+docker pull ghcr.io/jordimas/ctranslate2-web-server-gpu:latest
+docker run --rm --gpus all -p 8015:8015 -e HF_TOKEN=$HF_TOKEN ghcr.io/jordimas/ctranslate2-web-server-gpu:latest
+```
 
 ## API
 
