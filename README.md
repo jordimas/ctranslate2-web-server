@@ -1,6 +1,6 @@
 # ctranslate2-web-server
 
-FastAPI server providing CTranslate2 inference with an OpenAI-compatible API. Supports all Gemma 3 models from HuggingFace, converting them to CTranslate2 format (int8) on first use.
+FastAPI server providing CTranslate2 inference with an OpenAI-compatible API. Supports any LLM compatible with CTranslate2 — including Gemma 3, Qwen, LLaMA, Mistral, and more — converting models from HuggingFace to CTranslate2 format (int8) on first use.
 
 ## Requirements
 
@@ -9,12 +9,7 @@ FastAPI server providing CTranslate2 inference with an OpenAI-compatible API. Su
 
 ## Pre-built images (quick start)
 
-Images are published to the GitHub Container Registry on every push:
-
-```
-ghcr.io/jordimas/ctranslate2-web-server-cpu:latest
-ghcr.io/jordimas/ctranslate2-web-server-gpu:latest
-```
+Images are published to the GitHub Container Registry on every push.
 
 Pull and run the CPU image:
 
@@ -29,6 +24,8 @@ For GPU:
 docker pull ghcr.io/jordimas/ctranslate2-web-server-gpu:latest
 docker run --rm --gpus all -p 8015:8015 -e HF_TOKEN=$HF_TOKEN ghcr.io/jordimas/ctranslate2-web-server-gpu:latest
 ```
+
+> **Note:** `HF_TOKEN` is required to download gated models such as Gemma from HuggingFace. Set it in your environment (`export HF_TOKEN=your_token`) or pass it directly with `-e HF_TOKEN=your_token`. You can create a token at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) after accepting the model's license.
 
 ### Chat completion
 
@@ -105,7 +102,7 @@ Models are stored inside the image under `/models`.
 GET /v1/models
 ```
 
-Returns all Gemma 3 models available on HuggingFace.
+Returns all models available on HuggingFace that are supported by CTranslate2 (e.g. Gemma 3, Qwen, LLaMA, Mistral).
 
 ### Text completion
 
