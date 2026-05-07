@@ -7,6 +7,53 @@ FastAPI server providing CTranslate2 inference with an OpenAI-compatible API. Su
 - Docker
 - NVIDIA Container Toolkit (GPU only)
 
+## Pre-built images (quick start)
+
+Images are published to the GitHub Container Registry on every push:
+
+```
+ghcr.io/jordimas/ctranslate2-web-server-cpu:latest
+ghcr.io/jordimas/ctranslate2-web-server-gpu:latest
+```
+
+Pull and run the CPU image:
+
+```bash
+docker pull ghcr.io/jordimas/ctranslate2-web-server-cpu:latest
+docker run --rm -p 8015:8015 -e HF_TOKEN=$HF_TOKEN ghcr.io/jordimas/ctranslate2-web-server-cpu:latest
+```
+
+For GPU:
+
+```bash
+docker pull ghcr.io/jordimas/ctranslate2-web-server-gpu:latest
+docker run --rm --gpus all -p 8015:8015 -e HF_TOKEN=$HF_TOKEN ghcr.io/jordimas/ctranslate2-web-server-gpu:latest
+```
+
+### Chat completion
+
+Using curl:
+
+```bash
+curl http://localhost:8015/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "google/gemma-3-270m-it", "messages": [{"role": "user", "content": "Hello!"}]}'
+```
+
+Using the OpenAI Python SDK:
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://localhost:8015/v1", api_key="unused")
+
+response = client.chat.completions.create(
+    model="google/gemma-3-270m-it",
+    messages=[{"role": "user", "content": "Hello!"}],
+)
+print(response.choices[0].message.content)
+```
+
 ## Dockerfiles
 
 | File | Base | Use case |
@@ -49,29 +96,6 @@ make run-gpu     # GPU (requires NVIDIA runtime)
 ```
 
 Models are stored inside the image under `/models`.
-
-## Pre-built images
-
-Images are published to the GitHub Container Registry on every push:
-
-```
-ghcr.io/jordimas/ctranslate2-web-server-cpu:latest
-ghcr.io/jordimas/ctranslate2-web-server-gpu:latest
-```
-
-Pull and run the CPU image:
-
-```bash
-docker pull ghcr.io/jordimas/ctranslate2-web-server-cpu:latest
-docker run --rm -p 8015:8015 -e HF_TOKEN=$HF_TOKEN ghcr.io/jordimas/ctranslate2-web-server-cpu:latest
-```
-
-For GPU:
-
-```bash
-docker pull ghcr.io/jordimas/ctranslate2-web-server-gpu:latest
-docker run --rm --gpus all -p 8015:8015 -e HF_TOKEN=$HF_TOKEN ghcr.io/jordimas/ctranslate2-web-server-gpu:latest
-```
 
 ## API
 
