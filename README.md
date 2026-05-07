@@ -71,6 +71,23 @@ curl http://localhost:8015/v1/chat/completions \
 
 The first request for a model triggers an automatic download and conversion. Subsequent requests use the cached converted model.
 
+## Sample
+
+`sample/eval_flores_en_ca.py` evaluates English→Catalan translation on [FLORES-200](https://huggingface.co/datasets/facebook/flores) scored with BLEU. It uses the OpenAI Python SDK — switching to this server requires only a `--url` flag:
+
+```bash
+# Start the server
+make run-cpu
+
+# Against OpenAI
+python sample/eval_flores_en_ca.py --model gpt-4o-mini
+
+# Against this server
+python sample/eval_flores_en_ca.py \
+  --url http://localhost:8015/v1 \
+  --model google/gemma-3-4b-it
+```
+
 ## Configuration
 
 | Variable | Default | Description |
