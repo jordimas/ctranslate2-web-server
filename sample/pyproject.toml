@@ -1,0 +1,9 @@
+[project]
+name = "ctranslate2-web-server-samples"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "datasets<3.0",
+    "openai",
+    "sacrebleu",
+]

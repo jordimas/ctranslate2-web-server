@@ -1,0 +1,31 @@
+FROM python:3.14-slim
+
+WORKDIR /app
+
+RUN pip install  uv
+
+COPY pyproject.toml uv.lock .
+RUN uv export --frozen --no-emit-package torch > /tmp/requirements.txt && \
+    uv pip install --system --no-cache torch==2.11.0 --index-url https://download.pytorch.org/whl/cpu && \
+    uv pip install --system --no-cache -r /tmp/requirements.txt
+
+# Optional: space-separated model IDs to pre-convert and bake into the image.
+# Example: --build-arg BUILD_MODELS="google/gemma-3-1b-it google/gemma-3-4b-it"
+ARG BUILD_MODELS=""
+ARG HF_TOKEN=""
+RUN if [ -n "$BUILD_MODELS" ]; then \
+      set -e; \
+      export HF_TOKEN="$HF_TOKEN"; \
+      for model in $BUILD_MODELS; do \
+        out="/models/$(echo "$model" | tr '/' '--')"; \
+        ct2-transformers-converter --model "$model" --output_dir "$out" --quantization int8 --force; \
+      done; \
+    fi
+
+ENV MODELS_DIR=/models \
+    DEVICE=cpu
+
+EXPOSE 8015
+
+COPY src/main.py .
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8015"]
