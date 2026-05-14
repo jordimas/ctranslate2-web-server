@@ -21,16 +21,26 @@ from pydantic import BaseModel, Field
 from transformers import AutoTokenizer
 
 MODELS_DIR = Path(os.environ.get("MODELS_DIR", "/models"))
+PRELOAD = os.environ.get("PRELOAD", "1").strip().lower() not in ("0", "false", "no")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    if not MODELS_DIR.exists():
+    if not PRELOAD:
+        logger.info("Preload disabled (PRELOAD=0).")
+    elif not MODELS_DIR.exists():
         logger.info("Models directory %s does not exist; no cached models.", MODELS_DIR)
     else:
-        cached = [d.name for d in MODELS_DIR.iterdir() if d.is_dir() and (d / "model.bin").exists()]
-        if cached:
-            logger.info("Cached models available (%d): %s", len(cached), ", ".join(sorted(cached)))
+        to_preload = []
+        for d in MODELS_DIR.iterdir():
+            if d.is_dir() and (d / "model.bin").exists() and (d / "model_id.txt").exists():
+                to_preload.append((d / "model_id.txt").read_text().strip())
+        if to_preload:
+            logger.info("Preloading %d cached model(s): %s", len(to_preload), ", ".join(sorted(to_preload)))
+            for model_id in to_preload:
+                logger.info("Preloading %s ...", model_id)
+                _load(model_id)
+                logger.info("Preloaded %s", model_id)
         else:
             logger.info("No cached models found in %s", MODELS_DIR)
     yield
@@ -76,6 +86,7 @@ def _load(model_id: str):
                 )
                 if r.returncode != 0:
                     raise RuntimeError(r.stderr)
+                (ct2 / "model_id.txt").write_text(model_id)
                 logger.info("Conversion of model %s complete.", model_id)
             _cache[model_id] = (
                 ctranslate2.Generator(str(ct2), device=DEVICE, inter_threads=inter_threads, intra_threads=intra_threads),
