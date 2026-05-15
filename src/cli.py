@@ -57,7 +57,7 @@ def translate(model_id, messages, max_tokens=512):
         sampling_temperature=1e-6,
         sampling_topp=1.0,
         include_prompt_in_result=False,
-        end_token=_end_tokens(tok),
+        #end_token=_end_tokens(tok),
     )
     return tok.decode(result[0].sequences_ids[0], skip_special_tokens=True)
 
