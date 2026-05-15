@@ -5,8 +5,10 @@ WORKDIR /app
 RUN pip install  uv
 
 COPY pyproject.toml uv.lock .
-RUN uv export --frozen --no-emit-package torch > /tmp/requirements.txt && \
+COPY wheels/ /tmp/wheels/
+RUN uv export --frozen --no-emit-package torch --no-emit-package ctranslate2 > /tmp/requirements.txt && \
     uv pip install --system --no-cache torch==2.11.0 --index-url https://download.pytorch.org/whl/cpu && \
+    uv pip install --system --no-cache /tmp/wheels/ctranslate2-4.7.2-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl && \
     uv pip install --system --no-cache -r /tmp/requirements.txt
 
 # Optional: space-separated model IDs to pre-convert and bake into the image.
@@ -19,6 +21,7 @@ RUN if [ -n "$BUILD_MODELS" ]; then \
       for model in $BUILD_MODELS; do \
         out="/models/$(echo "$model" | tr '/' '--')"; \
         ct2-transformers-converter --model "$model" --output_dir "$out" --quantization int8 --force; \
+        echo "$model" > "$out/model_id.txt"; \
       done; \
     fi
 
@@ -27,5 +30,5 @@ ENV MODELS_DIR=/models \
 
 EXPOSE 8015
 
-COPY src/main.py .
+COPY src/main.py  .
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8015"]
