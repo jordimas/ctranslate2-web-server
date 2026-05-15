@@ -79,6 +79,8 @@ def main():
     elapsed = time.time() - t0
     print(text)
     logger.info("Elapsed: %.2fs", elapsed)
+    _, tok = _load(model_id)
+    print(f"BOS token: {tok.bos_token!r} (id={tok.bos_token_id})")
 
 
 if __name__ == "__main__":
