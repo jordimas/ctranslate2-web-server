@@ -34,6 +34,12 @@ build-gpu-4b:
 build-cpu-4b:
 	docker build -f Dockerfile.cpu --build-arg BUILD_MODELS="google/gemma-3-4b-it" --build-arg HF_TOKEN=$(HF_TOKEN) -t $(IMAGE)-gpu:$(TAG) .
 
+build-cpu-31b:
+	docker build -f Dockerfile.cpu --build-arg BUILD_MODELS="google/gemma-4-31b-it" --build-arg HF_TOKEN=$(HF_TOKEN) -t $(IMAGE)-cpu:$(TAG) .
+
+build-gpu-31b:
+	docker build -f Dockerfile.gpu --build-arg BUILD_MODELS="google/gemma-4-31b-it" --build-arg HF_TOKEN=$(HF_TOKEN) -t $(IMAGE)-gpu:$(TAG) .
+
 build-cpu-eval-all:
 	docker build --no-cache -f Dockerfile.cpu \
 		--build-arg BUILD_MODELS="$(shell tr '\n' ' ' < sample/eval_models.txt)" \
@@ -46,4 +52,4 @@ run-cpu:
 run-gpu:
 	docker run --rm --gpus all -p $(PORT):$(PORT) -e HF_TOKEN=$(HF_TOKEN) $(IMAGE)-gpu:$(TAG)
 
-.PHONY: build build-cpu build-gpu build-cpu-12b build-cpu-1b build-gpu-12b build-gpu-1b run-cpu run-gpu build-cpu-eval-all
+.PHONY: build build-cpu build-gpu build-cpu-12b build-cpu-1b build-cpu-4b build-cpu-27b build-cpu-31b build-gpu-12b build-gpu-1b build-gpu-4b build-gpu-31b run-cpu run-gpu build-cpu-eval-all
