@@ -18,7 +18,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from huggingface_hub import HfApi
 from pydantic import BaseModel, Field
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, GenerationConfig
 
 MODELS_DIR = Path(os.environ.get("MODELS_DIR", "/models"))
 PRELOAD = os.environ.get("PRELOAD", "1").strip().lower() not in ("0", "false", "no")
@@ -72,6 +72,7 @@ intra_threads = 4
 
 # --- model loading ---
 
+
 def _load(model_id: str):
     with _lock:
         if model_id not in _cache:
@@ -88,28 +89,24 @@ def _load(model_id: str):
                     raise RuntimeError(r.stderr)
                 (ct2 / "model_id.txt").write_text(model_id)
                 logger.info("Conversion of model %s complete.", model_id)
+            tok = AutoTokenizer.from_pretrained(model_id)
+            gen_config = GenerationConfig.from_pretrained(model_id)
+            eos = gen_config.eos_token_id
+            ids = eos if isinstance(eos, list) else [eos]
+            end_tokens = [t for t in tok.convert_ids_to_tokens(ids) if t is not None]
+            logger.info("Model %s end_tokens: %s", model_id, end_tokens)
             _cache[model_id] = (
                 ctranslate2.Generator(str(ct2), device=DEVICE, inter_threads=inter_threads, intra_threads=intra_threads),
-                AutoTokenizer.from_pretrained(model_id),
+                tok,
+                end_tokens,
             )
     return _cache[model_id]
 
 
 def _generate(model_id, token_ids, max_tokens, temperature, top_p, stop):
-    gen, tok = _load(model_id)
+    gen, tok, end_tokens = _load(model_id)
     tokens = tok.convert_ids_to_tokens(token_ids)
-    extra = {}
-    if "gemma-4" in model_id.lower():
-        gen_cfg = getattr(tok, "generation_config", None)
-        if gen_cfg is not None:
-            eos = gen_cfg.eos_token_id
-            if eos is not None:
-                if isinstance(eos, int):
-                    eos = [eos]
-                end_tokens = [t for t in tok.convert_ids_to_tokens(eos) if t is not None]
-                if end_tokens:
-                    logger.info("gemma-4 end_token: %s", end_tokens)
-                    extra["end_token"] = end_tokens
+    extra = {"end_token": end_tokens} if end_tokens else {}
     result = gen.generate_batch(
         [tokens], max_length=max_tokens,
         sampling_temperature=max(temperature, 1e-6),
@@ -127,7 +124,7 @@ def _generate(model_id, token_ids, max_tokens, temperature, top_p, stop):
 
 
 def _ntokens(model_id, text):
-    _, tok = _load(model_id)
+    _, tok, _end = _load(model_id)
     return len(tok.encode(text))
 
 
@@ -239,7 +236,7 @@ def completions(req: CompletionReq):
     stop = [req.stop] if isinstance(req.stop, str) else (req.stop or [])
     choices, pt, ct = [], 0, 0
     for i, p in enumerate(prompts):
-        _, tok = _load(req.model)
+        _, tok, _end = _load(req.model)
         token_ids = tok.encode(p)
         text, finish = _generate(req.model, token_ids, req.max_tokens, req.temperature, req.top_p, stop)
         pt += len(token_ids)
@@ -260,7 +257,7 @@ def chat_completions(req: ChatReq):
     if req.stream:
         raise HTTPException(501, "Streaming not supported")
     stop = [req.stop] if isinstance(req.stop, str) else (req.stop or [])
-    _, tok = _load(req.model)
+    _, tok, _end = _load(req.model)
     messages = [{"role": m.role, "content": m.content} for m in req.messages]
     is_qwen = "qwen" in req.model.lower()
     disable_thinking = is_qwen and req.reasoning not in ("low", "medium", "high")
