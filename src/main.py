@@ -98,11 +98,24 @@ def _load(model_id: str):
 def _generate(model_id, token_ids, max_tokens, temperature, top_p, stop):
     gen, tok = _load(model_id)
     tokens = tok.convert_ids_to_tokens(token_ids)
+    extra = {}
+    if "gemma-4" in model_id.lower():
+        gen_cfg = getattr(tok, "generation_config", None)
+        if gen_cfg is not None:
+            eos = gen_cfg.eos_token_id
+            if eos is not None:
+                if isinstance(eos, int):
+                    eos = [eos]
+                end_tokens = [t for t in tok.convert_ids_to_tokens(eos) if t is not None]
+                if end_tokens:
+                    logger.info("gemma-4 end_token: %s", end_tokens)
+                    extra["end_token"] = end_tokens
     result = gen.generate_batch(
         [tokens], max_length=max_tokens,
         sampling_temperature=max(temperature, 1e-6),
         sampling_topp=top_p,
         include_prompt_in_result=False,
+        **extra,
     )
     text = tok.decode(result[0].sequences_ids[0], skip_special_tokens=True)
     finish = "length"
