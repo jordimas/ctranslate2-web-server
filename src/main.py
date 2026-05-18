@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field
 from transformers import AutoTokenizer, GenerationConfig
 
 MODELS_DIR = Path(os.environ.get("MODELS_DIR", "/models"))
-PRELOAD = os.environ.get("PRELOAD", "1").strip().lower() not in ("0", "false", "no")
+PRELOAD = os.environ.get("PRELOAD", "0").strip().lower() not in ("0", "false", "no")
 
 
 @asynccontextmanager
@@ -76,7 +76,7 @@ intra_threads = 4
 def _load(model_id: str):
     with _lock:
         if model_id not in _cache:
-            ct2 = MODELS_DIR / model_id.replace("/", "-")
+            ct2 = MODELS_DIR / model_id.replace("/", "--")
             if not (ct2 / "model.bin").exists():
                 ct2.mkdir(parents=True, exist_ok=True)
                 logger.info("Converting model %s to CTranslate2 format...", model_id)
@@ -206,6 +206,16 @@ class ChatResp(BaseModel):
 
 
 # --- routes ---
+
+@app.post("/v1/models/{model_id:path}/unload")
+def unload_model(model_id: str):
+    with _lock:
+        if model_id not in _cache:
+            raise HTTPException(404, f"Model {model_id!r} not loaded")
+        del _cache[model_id]
+    logger.info("Unloaded %s", model_id)
+    return {"unloaded": model_id}
+
 
 @app.get("/info")
 def info():
