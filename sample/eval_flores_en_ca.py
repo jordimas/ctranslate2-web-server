@@ -30,6 +30,15 @@ if args.info and args.url:
 N = 200
 client = OpenAI(base_url=args.url)
 
+print("Preloading model...", flush=True)
+client.chat.completions.create(
+    model=args.model,
+    messages=[{"role": "user", "content": "Hi"}],
+    max_tokens=1,
+    temperature=0,
+)
+print("Model ready.", flush=True)
+
 ds = load_dataset("facebook/flores", "all", split="devtest", trust_remote_code=True)
 samples = ds.select(range(N))
 
@@ -66,3 +75,13 @@ bleu = BLEU()
 result = bleu.corpus_score(hypotheses, [references])
 print(result)
 print(f"Tokens: {total_tokens}")
+
+if args.url:
+    try:
+        base = args.url.rstrip("/")
+        if base.endswith("/v1"):
+            base = base[:-3]
+        requests.post(f"{base}/v1/models/{args.model}/unload")
+        print(f"Model {args.model} unloaded.", flush=True)
+    except Exception:
+        pass
